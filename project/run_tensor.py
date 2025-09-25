@@ -21,8 +21,12 @@ class Network(minitorch.Module):
         self.layer3 = Linear(hidden_layers, 1)
 
     def forward(self, x):
-        # TODO: Implement for Task 2.5.
-        raise NotImplementedError("Need to implement for Task 2.5")
+        # 第一层：输入 -> 隐藏层，然后应用 ReLU
+        middle = self.layer1.forward(x).relu()
+        # 第二层：隐藏层 -> 隐藏层，然后应用 ReLU
+        end = self.layer2.forward(middle).relu()
+        # 第三层：隐藏层 -> 输出层，然后应用 Sigmoid
+        return self.layer3.forward(end).sigmoid()
 
 
 class Linear(minitorch.Module):
@@ -33,8 +37,8 @@ class Linear(minitorch.Module):
         self.out_size = out_size
 
     def forward(self, x):
-        # TODO: Implement for Task 2.5.
-        raise NotImplementedError("Need to implement for Task 2.5")
+        # 使用矩阵乘法：x @ weights + bias
+        return x @ self.weights + self.bias
 
 
 def default_log_fn(epoch, total_loss, correct, losses):
