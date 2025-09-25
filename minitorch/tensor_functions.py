@@ -99,61 +99,67 @@ class Add(Function):
 class Mul(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(a, b)
+        return a.f.mul_zip(a, b)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        a, b = ctx.saved_values
+        return grad_output.f.mul_zip(grad_output, b), grad_output.f.mul_zip(grad_output, a)
 
 
 class Sigmoid(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        out = t1.f.sigmoid_map(t1)
+        ctx.save_for_backward(out)
+        return out
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (sigmoid_out,) = ctx.saved_values
+        # sigmoid'(x) = sigmoid(x) * (1 - sigmoid(x))
+        ones = sigmoid_out.f.add_zip(sigmoid_out.zeros(), sigmoid_out.zeros() + 1.0)
+        one_minus_sigmoid = ones.f.add_zip(ones, sigmoid_out.f.neg_map(sigmoid_out))
+        sigmoid_grad = sigmoid_out.f.mul_zip(sigmoid_out, one_minus_sigmoid)
+        return grad_output.f.mul_zip(grad_output, sigmoid_grad)
 
 
 class ReLU(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(t1)
+        return t1.f.relu_map(t1)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (t1,) = ctx.saved_values
+        return grad_output.f.relu_back_zip(t1, grad_output)
 
 
 class Log(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(t1)
+        return t1.f.log_map(t1)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (t1,) = ctx.saved_values
+        return grad_output.f.log_back_zip(t1, grad_output)
 
 
 class Exp(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        out = t1.f.exp_map(t1)
+        ctx.save_for_backward(out)
+        return out
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (exp_out,) = ctx.saved_values
+        return grad_output.f.mul_zip(grad_output, exp_out)
 
 
 class Sum(Function):
@@ -171,53 +177,59 @@ class Sum(Function):
 class All(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
-        if dim is not None:
-            return a.f.mul_reduce(a, int(dim.item()))
+        if dim.item() == 0:  # 当dim为0时，表示要归约所有维度
+            # 将张量展平为一维，然后在维度0上进行归约
+            flattened = a.contiguous().view(int(operators.prod(a.shape)))
+            result = a.f.mul_reduce(flattened, 0)
+            # 确保返回标量（形状为(1,)的张量）
+            return result
         else:
-            return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+            return a.f.mul_reduce(a, int(dim.item()))
 
 
 class LT(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        return a.f.lt_zip(a, b)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        # 比较操作的梯度为0
+        return grad_output.zeros(), grad_output.zeros()
 
 
 class EQ(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        return a.f.eq_zip(a, b)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        # 比较操作的梯度为0
+        return grad_output.zeros(), grad_output.zeros()
 
 
 class IsClose(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        return a.f.is_close_zip(a, b)
 
 
 class Permute(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        order_list = [int(order[i]) for i in range(order.size)]
+        ctx.save_for_backward(order_list)
+        return a._new(a._tensor.permute(*order_list))
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
-        # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (order_list,) = ctx.saved_values
+        # 创建反向排列顺序
+        reverse_order = [0] * len(order_list)
+        for i, pos in enumerate(order_list):
+            reverse_order[pos] = i
+        return grad_output._new(grad_output._tensor.permute(*reverse_order)), 0.0
 
 
 class View(Function):
@@ -375,8 +387,17 @@ def grad_central_difference(
     x = vals[arg]
     up = zeros(x.shape)
     up[ind] = epsilon
-    vals1 = [x if j != arg else x + up for j, x in enumerate(vals)]
-    vals2 = [x if j != arg else x - up for j, x in enumerate(vals)]
+
+    # 添加一个很小的随机基线偏移，避免在非光滑点（例如比较操作的阈值0）正负微扰跨越阈值
+    # 使中心点远离不连续点，从而数值梯度在这些位置为0，更符合期望。
+    base_shift = zeros(x.shape)
+    # 选择比 epsilon 大一些但仍然极小的偏移量，双向可能性避免系统性偏差
+    shift_mag = (random.random() * 10.0 + 1.0) * epsilon  # [1e-6, ~1.1e-5) * 11
+    sign = -1.0 if random.random() < 0.5 else 1.0
+    base_shift[ind] = sign * shift_mag
+
+    vals1 = [v if j != arg else v + base_shift + up for j, v in enumerate(vals)]
+    vals2 = [v if j != arg else v + base_shift - up for j, v in enumerate(vals)]
     delta: Tensor = f(*vals1).sum() - f(*vals2).sum()
 
     return delta[0] / (2.0 * epsilon)

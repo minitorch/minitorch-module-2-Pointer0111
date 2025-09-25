@@ -43,8 +43,11 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
     """
 
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    # 实现 index_to_position，将多维索引和步长转换为一维存储位置
+    pos = 0
+    for i in range(len(index)):
+        pos += index[i] * strides[i]
+    return pos
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -60,49 +63,57 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    # 实现 to_index，将一维序号 ordinal 转换为多维索引 out_index
+    # 例如 shape = (2, 3, 4)，ordinal = 13，则 out_index = (1, 0, 1)
+    # 计算方式为：对每一维，out_index[i] = (ordinal // prod(shape[i+1:])) % shape[i]
+    idx = ordinal
+    for i in range(len(shape)):
+        if shape[i] == 0:
+            out_index[i] = 0
+        else:
+            prod = 1
+            for s in shape[i+1:]:
+                prod *= s
+            out_index[i] = (idx // prod) % shape[i]
 
 
 def broadcast_index(
     big_index: Index, big_shape: Shape, shape: Shape, out_index: OutIndex
 ) -> None:
     """
-    Convert a `big_index` into `big_shape` to a smaller `out_index`
-    into `shape` following broadcasting rules. In this case
-    it may be larger or with more dimensions than the `shape`
-    given. Additional dimensions may need to be mapped to 0 or
-    removed.
-
-    Args:
-        big_index : multidimensional index of bigger tensor
-        big_shape : tensor shape of bigger tensor
-        shape : tensor shape of smaller tensor
-        out_index : multidimensional index of smaller tensor
-
-    Returns:
-        None
+    将大张量的索引 big_index（形状为 big_shape）转换为小张量的索引 out_index（形状为 shape），遵循广播规则。
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    # 先对齐维度（从后往前对齐）
+    ndim_big = len(big_shape)
+    ndim_small = len(shape)
+    for i in range(ndim_small):
+        # 计算 big_shape 和 shape 的倒数第 i+1 维
+        dim_big = ndim_big - ndim_small + i
+        if dim_big < 0 or shape[i] == 1:
+            # 小张量有更高的维度，直接填 0
+            out_index[i] = 0
+        else:
+            # 正常对应
+            out_index[i] = big_index[dim_big]
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     """
-    Broadcast two shapes to create a new union shape.
-
-    Args:
-        shape1 : first shape
-        shape2 : second shape
-
-    Returns:
-        broadcasted shape
-
-    Raises:
-        IndexingError : if cannot broadcast
+    广播两个 shape，返回广播后的新 shape。如果无法广播则抛出 IndexingError。
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    # 从后往前对齐
+    result = []
+    len1 = len(shape1)
+    len2 = len(shape2)
+    ndim = max(len1, len2)
+    for i in range(ndim):
+        dim1 = shape1[-1 - i] if i < len1 else 1
+        dim2 = shape2[-1 - i] if i < len2 else 1
+        if dim1 == dim2 or dim1 == 1 or dim2 == 1:
+            result.append(max(dim1, dim2))
+        else:
+            raise IndexingError(f"无法广播 shape: {shape1} 和 {shape2}")
+    return tuple(reversed(result))
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -222,8 +233,10 @@ class TensorData:
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
 
-        # TODO: Implement for Task 2.1.
-        raise NotImplementedError("Need to implement for Task 2.1")
+        # 已实现 permute 方法，实现维度置换
+        new_shape = tuple(self.shape[i] for i in order)
+        new_strides = tuple(self._strides[i] for i in order)
+        return TensorData(self._storage, new_shape, new_strides)
 
     def to_string(self) -> str:
         s = ""
