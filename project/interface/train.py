@@ -21,7 +21,7 @@ def render_train_interface(
     points = col2.slider("Number of points", min_value=1, max_value=150, value=50)
     selected_dataset = col1.selectbox("Select dataset", list(datasets_map.keys()))
 
-    @st.cache
+    @st.cache_data
     def get_dataset(selected_dataset, points):
         return datasets_map[selected_dataset](points)
 
@@ -29,7 +29,7 @@ def render_train_interface(
 
     fig = plots.plot_out(dataset)
     fig.update_layout(width=600, height=600)
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, key="dataset_plot")
 
     st.markdown("### Model")
     if hidden_layer:
@@ -39,7 +39,7 @@ def render_train_interface(
     else:
         hidden_layers = 0
 
-    @st.cache
+    @st.cache_data
     def get_train(hidden_layers):
         train = TrainCls(hidden_layers)
         one_output = train.run_one(dataset.X[0])
