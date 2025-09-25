@@ -37,8 +37,21 @@ class Linear(minitorch.Module):
         self.out_size = out_size
 
     def forward(self, x):
-        # 使用矩阵乘法：x @ weights + bias
-        return x @ self.weights + self.bias
+        # 调试：打印形状
+        # print('x.shape=', x.shape, 'W.shape=', self.weights.value.shape, 'b.shape=', self.bias.value.shape)
+        # 使用广播乘法与求和代替矩阵乘法：x @ weights + bias
+        W = self.weights.value
+        b = self.bias.value
+        xc = x.contiguous()
+        Wc = W.contiguous()
+        # print('sizes: x.size=', xc.size, 'W.size=', Wc.size)
+        n, m = xc.shape
+        mi, mo = Wc.shape
+        # print('n,m,mi,mo =', n, m, mi, mo, 'prod x=', n*m, 'target=', n*m*1)
+        x3 = xc.view(n, m, 1)
+        W3 = Wc.view(1, mi, mo)
+        y = (x3 * W3).sum(dim=1).view(n, mo)
+        return y + b.view(1, b.shape[0])
 
 
 def default_log_fn(epoch, total_loss, correct, losses):
@@ -66,8 +79,11 @@ class TensorTrain:
         X = minitorch.tensor(data.X)
         y = minitorch.tensor(data.y)
 
+        print('start training: N=', data.N, 'X.shape=', X.shape, 'y.shape=', y.shape)
+
         losses = []
         for epoch in range(1, self.max_epochs + 1):
+            # print('epoch', epoch)
             total_loss = 0.0
             correct = 0
             optim.zero_grad()

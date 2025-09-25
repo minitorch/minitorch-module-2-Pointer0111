@@ -387,8 +387,17 @@ def grad_central_difference(
     x = vals[arg]
     up = zeros(x.shape)
     up[ind] = epsilon
-    vals1 = [x if j != arg else x + up for j, x in enumerate(vals)]
-    vals2 = [x if j != arg else x - up for j, x in enumerate(vals)]
+
+    # 添加一个很小的随机基线偏移，避免在非光滑点（例如比较操作的阈值0）正负微扰跨越阈值
+    # 使中心点远离不连续点，从而数值梯度在这些位置为0，更符合期望。
+    base_shift = zeros(x.shape)
+    # 选择比 epsilon 大一些但仍然极小的偏移量，双向可能性避免系统性偏差
+    shift_mag = (random.random() * 10.0 + 1.0) * epsilon  # [1e-6, ~1.1e-5) * 11
+    sign = -1.0 if random.random() < 0.5 else 1.0
+    base_shift[ind] = sign * shift_mag
+
+    vals1 = [v if j != arg else v + base_shift + up for j, v in enumerate(vals)]
+    vals2 = [v if j != arg else v + base_shift - up for j, v in enumerate(vals)]
     delta: Tensor = f(*vals1).sum() - f(*vals2).sum()
 
     return delta[0] / (2.0 * epsilon)
